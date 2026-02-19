@@ -121,8 +121,8 @@ std::istream & operator>>(std::istream &is, Suit &suit) {
   //HINT: the left bower is the trump suit!
   Suit Card::get_suit(Suit trump) const{
     if(rank == JACK){
-      if((suit == 0 && trump == 1) || (suit == 1 && trump == 0)
-        || (suit == 2 && trump == 3) || (suit == 3 && trump == 2)){
+      if((suit == SPADES && trump == CLUBS) || (suit == CLUBS && trump == SPADES)
+        || (suit == HEARTS && trump == DIAMONDS) || (suit == DIAMONDS && trump == HEARTS)){
         return trump;
       }
     }
@@ -143,8 +143,8 @@ std::istream & operator>>(std::istream &is, Suit &suit) {
   //EFFECTS Returns true if card is the Jack of the next suit
   bool Card::is_left_bower(Suit trump) const{
     if(rank == JACK){
-      if((suit == 0 && trump == 1) || (suit == 1 && trump == 0)
-        || (suit == 2 && trump == 3) || (suit == 3 && trump == 2)){
+      if((suit == SPADES && trump == CLUBS) || (suit == CLUBS && trump == SPADES)
+        || (suit == DIAMONDS && trump == HEARTS) || (suit == HEARTS && trump == DIAMONDS)){
         return true;
       }
     }
@@ -167,8 +167,8 @@ std::ostream& operator<<(std::ostream& os, const Card& c) {
   return os; 
 }
 //   operator>>
-std::istream &operator>>(std::istream &is, Card &c) {
-  string junk;
+std::istream& operator>>(std::istream &is, Card &c) {
+  std::string junk;
   is >> c.rank >> junk >> c.suit; 
   return is; 
 }
@@ -211,15 +211,18 @@ Suit Suit_next(Suit suit){
 //EFFECTS Returns true if a is lower value than b.  Uses trump to determine
 // order, as described in the spec.
 bool Card_less(const Card &a, const Card &b, Suit trump){
-  if(a.is_trump(trump) && !b.is_trump(trump)){
-    if(a.is_trump(trump) && b.is_trump(trump)){
-      return a.get_rank() > b.get_rank();
-    }
-    return true;
-  }else if(a.get_rank() > b.get_rank()){
-    return true;
-  }
-  return false;
+  if (a.is_right_bower(trump)) return false;
+  if (b.is_right_bower(trump)) return true;
+
+  if (a.is_left_bower(trump)) return false;
+  if (b.is_left_bower(trump)) return true;
+
+  if(a.is_trump(trump) && !b.is_trump(trump)) return false;
+  
+  if(!a.is_trump(trump) && b.is_trump(trump)) return true;
+
+  return a.get_rank() < b.get_rank();
+
 }
 
 //EFFECTS Returns true if a is lower value than b.  Uses both the trump suit

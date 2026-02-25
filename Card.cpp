@@ -57,10 +57,10 @@ std::istream & operator>>(std::istream &is, Rank &rank) {
 /////////////// Suit operator implementations - DO NOT CHANGE ///////////////
 
 constexpr const char *const SUIT_NAMES[] = {
-  "Spades",   // SPADES
-  "Hearts",   // HEARTS
-  "Clubs",    // CLUBS
-  "Diamonds", // DIAMONDS
+  "Spades",   // SPADES 0
+  "Hearts",   // HEARTS 1
+  "Clubs",    // CLUBS 2
+  "Diamonds", // DIAMONDS 3
 };
 
 //REQUIRES str represents a valid suit ("Spades", "Hearts", "Clubs", or "Diamonds")

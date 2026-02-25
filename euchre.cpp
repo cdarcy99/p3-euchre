@@ -42,21 +42,25 @@ private:
     int currentHand;
 
     void deal() {
-        int current = (dealerIndex + 1) % 4;
-        for (int i = 0; i < 4; i++) {
-            int count = (i % 2 == 0) ? 3 : 2;
-            for (int j = 0; j < count; j++)
-                players[current]->add_card(pack.deal_one());
-            current = (current + 1) % 4;
-        }
-        current = (dealerIndex + 1) % 4;
-        for (int i = 0; i < 4; i++) {
-            int count = (i % 2 == 1) ? 3 : 2;
-            for (int j = 0; j < count; j++)
-                players[current]->add_card(pack.deal_one());
-            current = (current + 1) % 4;
-        }
+    int current = (dealerIndex + 1) % 4;
+    for (int i = 0; i < 4; i++) {
+        int count;
+        if (i % 2 == 0) count = 3;
+        else count = 2;
+        for (int j = 0; j < count; j++)
+            players[current]->add_card(pack.deal_one());
+        current = (current + 1) % 4;
     }
+    current = (dealerIndex + 1) % 4;
+    for (int i = 0; i < 4; i++) {
+        int count;
+        if (i % 2 == 1) count = 3;
+        else count = 2;
+        for (int j = 0; j < count; j++)
+            players[current]->add_card(pack.deal_one());
+        current = (current + 1) % 4;
+    }
+}
 
     // Returns makerIndex, or -1 if no one ordered up
     int make_trump(const Card &upcard, Suit &trump) {

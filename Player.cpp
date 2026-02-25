@@ -119,12 +119,7 @@ void SimplePlayer::add_and_discard(const Card &upcard){
     Suit trump = upcard.get_suit();
     int lowestIndex = 0;
     for(int i = 1; i < (int)hand.size(); i++){
-        bool isLower = Card_less(hand[i], hand[lowestIndex], trump);
-        bool isTie = !Card_less(hand[lowestIndex], 
-            hand[i], trump) && !isLower;
-        bool higherSuit = hand[i].get_suit() >
-            hand[lowestIndex].get_suit();
-        if(isLower || (isTie && higherSuit)){
+        if(Card_less(hand[i], hand[lowestIndex], trump)){
             lowestIndex = i;
         }
     }
@@ -145,7 +140,7 @@ Card SimplePlayer::lead_card(Suit trump) {
                 Card_less(hand[bestIndex], hand[i], trump);
             bool isTie = bestIndex != -1 && 
                 !Card_less(hand[bestIndex], hand[i], trump)
-                         && !Card_less(hand[i], hand[bestIndex], trump);
+                && !Card_less(hand[i], hand[bestIndex], trump);
             if (isHigher || 
                 (isTie && hand[i].get_suit() > hand[bestIndex].get_suit())) {
                 bestIndex = i;
@@ -189,27 +184,29 @@ Card SimplePlayer::play_card(const Card &led_card, Suit trump) {
     if (canFollow) {
     for (size_t i = 0; i < hand.size(); i++) {
         bool followsSuit = hand[i].get_suit(trump) == ledSuit;
-        bool isHigher = bestIndex == -1 || 
+        bool isHigher = (bestIndex == -1) || 
             Card_less(hand[bestIndex], hand[i], trump);
         if (followsSuit && isHigher) {
             bestIndex = i;
         }
     }
+    // fixed to not have overly long lines
     } else {
-        for (size_t i = 0; i < hand.size(); i++) {
-            bool isLower = bestIndex == -1 || 
-                Card_less(hand[i], hand[bestIndex], trump);
-            bool isTie = bestIndex != -1 && 
-                !Card_less(hand[i], hand[bestIndex], trump)
-                        && !Card_less(hand[bestIndex], hand[i], trump);
-            bool higherSuit = hand[i].get_suit() > hand[bestIndex].get_suit();
-            if (isLower || (isTie && higherSuit)) {
-                bestIndex = i;
-            }
+    bestIndex = 0;
+    for (size_t i = 1; i < hand.size(); i++) {
+        if (Card_less(hand[i], hand[bestIndex], trump)) {
+            bestIndex = i;
         }
+    }
 }
-
     Card result = hand[bestIndex];
+     if(result.get_rank() == 7){
+        //for (size_t i=0; i < hand.size(); ++i)
+        //std::cout << "BOT player " << name << "'s hand: "
+            //<< "[" << i << "] " << hand[i] << "\n";
+    }
+   
+
     hand.erase(hand.begin() + bestIndex);
     return result;
 }

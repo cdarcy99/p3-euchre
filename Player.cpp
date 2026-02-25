@@ -2,6 +2,9 @@
 #include <cassert>
 #include <iostream>
 #include <array>
+#include <algorithm>
+
+using namespace std;
 
 class SimplePlayer : public Player {
     public:
@@ -30,6 +33,8 @@ class HumanPlayer : public Player {
         void add_and_discard(const Card &upcard) override;
         Card lead_card(Suit trump) override;
         Card play_card(const Card &led_card, Suit trump) override;
+        void print_hand() const;
+        
 
     private:
         std::string name;
@@ -96,7 +101,7 @@ bool SimplePlayer::make_trump(const Card &upcard, bool is_dealer,
             order_up_suit = nextSuit;
             return true;
         }
-        for(const Card &card : hand){
+        for(const Card card : hand){
             if(card.get_suit() == nextSuit && card.get_rank() >= JACK){
                 order_up_suit = nextSuit;
                 return true;
@@ -104,103 +109,112 @@ bool SimplePlayer::make_trump(const Card &upcard, bool is_dealer,
         }
 
     }
-
-    return false;
+     return false;
 }
 
 //REQUIRES Player has at least one card
 //EFFECTS  Player adds one card to hand and removes one card from hand.
 void SimplePlayer::add_and_discard(const Card &upcard){
     hand.push_back(upcard);
+    Suit trump = upcard.get_suit();
     int lowestIndex = 0;
-    for(int i = 1; i < hand.size(); i++){
-        if(hand[i].get_rank() < hand[lowestIndex].get_rank()){
+    for(int i = 1; i < (int)hand.size(); i++){
+        bool isLower = Card_less(hand[i], hand[lowestIndex], trump);
+        bool isTie = !Card_less(hand[lowestIndex], 
+            hand[i], trump) && !isLower;
+        bool higherSuit = hand[i].get_suit() >
+            hand[lowestIndex].get_suit();
+        if(isLower || (isTie && higherSuit)){
             lowestIndex = i;
         }
     }
     hand.erase(hand.begin() + lowestIndex);
 }
-
   //REQUIRES Player has at least one card
   //EFFECTS  Leads one Card from Player's hand according to their strategy
   //  "Lead" means to play the first Card in a trick.  The card
   //  is removed the player's hand.
 
 Card SimplePlayer::lead_card(Suit trump) {
-    Card bestCard = hand.at(0);
-    int bestIndex = 0;
-    bool foundNonTrump = false;
-    //bool foundTrump = false;
+    int bestIndex = -1;
 
-    for (const Card &card : hand) {
-        if (!card.is_trump(trump)) {
-            foundNonTrump = true;
-        }
-    }
-    if(foundNonTrump){
-        for(size_t i = 0; i < hand.size(); i ++){
-            if (!hand[i].is_trump(trump) &&
-                hand[i] > bestCard) {
-                bestCard = hand[i];
-                bestIndex = i;
-            }
-        }
-    } else {
-        // All cards are trump so find highest trump
-        for (int i = 0; i < hand.size(); i++) {
-            if (hand[i] > bestCard) {
-                bestCard = hand[i];
+    // highest non-trump
+    for (int i = 0; i < (int)hand.size(); i++) {
+        if (!hand[i].is_trump(trump)) {
+            bool isHigher = bestIndex == -1 || 
+                Card_less(hand[bestIndex], hand[i], trump);
+            bool isTie = bestIndex != -1 && 
+                !Card_less(hand[bestIndex], hand[i], trump)
+                         && !Card_less(hand[i], hand[bestIndex], trump);
+            if (isHigher || 
+                (isTie && hand[i].get_suit() > hand[bestIndex].get_suit())) {
                 bestIndex = i;
             }
         }
     }
 
+    // highest trump
+    if (bestIndex == -1) {
+        for (int i = 0; i < (int)hand.size(); i++) {
+            bool isHigher = bestIndex == -1 || 
+                Card_less(hand[bestIndex], hand[i], trump);
+            bool isTie = bestIndex != -1 && 
+                !Card_less(hand[bestIndex], hand[i], trump)
+                         && !Card_less(hand[i], hand[bestIndex], trump);
+            if (isHigher || 
+                (isTie && hand[i].get_suit() > hand[bestIndex].get_suit())) {
+                bestIndex = i;
+            }
+        }
+    }
+
+    Card result = hand[bestIndex];
     hand.erase(hand.begin() + bestIndex);
-    return bestCard;
+    return result;
 }
-
-
   //REQUIRES Player has at least one card
   //EFFECTS  Plays one Card from Player's hand according to their strategy.
   //  The card is removed from the player's hand.
-
-  //CHECK THIS
 Card SimplePlayer::play_card(const Card &led_card, Suit trump) {
-    Card highestCard = hand.at(0);
-    Card lowestCard = hand.at(0);
-    int highestIndex = 0;
-    int lowestIndex = 0;
+    Suit ledSuit = led_card.get_suit(trump);
 
-    bool canFollowSuit = false;
-
-    for (int i = 0; i < hand.size(); i++) {
-        const Card &card = hand.at(i);
-
-        if (card.get_suit() == led_card.get_suit()) {
-            if (!canFollowSuit || card.get_rank() > highestCard.get_rank()) {
-                highestCard = card;
-                highestIndex = i;
-            }
-            canFollowSuit = true;
-        }
-
-        // Track lowest card overall
-        if (card.get_rank() < lowestCard.get_rank()) {
-            lowestCard = card;
-            lowestIndex = i;
+    bool canFollow = false;
+    for (size_t i = 0; i < hand.size(); i++) {
+        if (hand[i].get_suit(trump) == ledSuit) {
+            canFollow = true;
+            break;
         }
     }
-
-    if (canFollowSuit) {
-        hand.erase(hand.begin() + highestIndex);
-        return highestCard;
+    int bestIndex = -1;
+    if (canFollow) {
+    for (size_t i = 0; i < hand.size(); i++) {
+        bool followsSuit = hand[i].get_suit(trump) == ledSuit;
+        bool isHigher = bestIndex == -1 || 
+            Card_less(hand[bestIndex], hand[i], trump);
+        if (followsSuit && isHigher) {
+            bestIndex = i;
+        }
+    }
     } else {
-        hand.erase(hand.begin() + lowestIndex);
-        return lowestCard;
-    }
+        for (size_t i = 0; i < hand.size(); i++) {
+            bool isLower = bestIndex == -1 || 
+                Card_less(hand[i], hand[bestIndex], trump);
+            bool isTie = bestIndex != -1 && 
+                !Card_less(hand[i], hand[bestIndex], trump)
+                        && !Card_less(hand[bestIndex], hand[i], trump);
+            bool higherSuit = hand[i].get_suit() > hand[bestIndex].get_suit();
+            if (isLower || (isTie && higherSuit)) {
+                bestIndex = i;
+            }
+        }
 }
 
-// TO DO (all)
+    Card result = hand[bestIndex];
+    hand.erase(hand.begin() + bestIndex);
+    return result;
+}
+
+
 HumanPlayer::HumanPlayer(std::string name_in)
     : name(name_in) {}
 
@@ -211,28 +225,60 @@ const std::string &HumanPlayer::get_name() const {
 
 void HumanPlayer::add_card(const Card &c){
     hand.push_back(c);
+    std::sort(hand.begin(), hand.end());
 }
 
 bool HumanPlayer::make_trump(const Card &upcard, bool is_dealer,
         int round, Suit &order_up_suit) const{
-   return true;
+   print_hand();
+   cout << "Human player " << name << ", please enter a suit, or \"pass\":\n";
+   string input;
+   cin >> input;
+   if (input == "pass") { 
+        return false; 
+    } 
+    order_up_suit = string_to_suit(input); 
+    return true;
+
+}
+
+void HumanPlayer::print_hand() const {
+  for (size_t i=0; i < hand.size(); ++i)
+    std::cout << "Human player " << name << "'s hand: "
+         << "[" << i << "] " << hand[i] << "\n";
 }
 
 //REQUIRES Player has at least one card
 //EFFECTS  Player adds one card to hand and removes one card from hand.
 void HumanPlayer::add_and_discard(const Card &upcard){
-    //nothing
+    hand.push_back(upcard);
+    std::sort(hand.begin(), hand.end());
 
+    print_hand();
+    std::cout << "Discard upcard: [-1]\n";
+    std::cout << "Human player " << name 
+              << ", please select a card to discard:\n";
+
+    int index;
+    std::cin >> index;
+
+    if(index != -1){
+        hand.erase(hand.begin() + index);
+    }
 }
-
   //REQUIRES Player has at least one card
   //EFFECTS  Leads one Card from Player's hand according to their strategy
   //  "Lead" means to play the first Card in a trick.  The card
   //  is removed the player's hand.
 
 Card HumanPlayer::lead_card(Suit trump) {
-    Card bestTrump = hand.at(0);
-    return bestTrump;
+    print_hand();
+    std::cout << "Human player " << name << ", please select a card:\n";
+    std::string cardIndex;
+    std::cin >> cardIndex;
+    Card card = hand.at(stoi(cardIndex));
+    hand.erase(hand.begin() + stoi(cardIndex));
+    return card;
 }
 
 
@@ -240,8 +286,14 @@ Card HumanPlayer::lead_card(Suit trump) {
   //EFFECTS  Plays one Card from Player's hand according to their strategy.
   //  The card is removed from the player's hand.
 Card HumanPlayer::play_card(const Card &led_card, Suit trump) {
+    print_hand();
+    cout << "Human player " << name << ", please select a card:\n";
 
-    Card lowestCard = hand.at(0);
-    return lowestCard;
+    string input;
+    cin >> input;
 
+    int idx = stoi(input);          
+    Card chosen = hand.at(idx);   
+    hand.erase(hand.begin() + idx);
+    return chosen;
 }

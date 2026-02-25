@@ -2,6 +2,7 @@
 #include <iostream>
 #include <array>
 #include "Card.hpp"
+#include <algorithm>
 
 using namespace std;
 
@@ -122,7 +123,8 @@ std::istream & operator>>(std::istream &is, Suit &suit) {
   Suit Card::get_suit(Suit trump) const{
     if(rank == JACK){
       if((suit == SPADES && trump == CLUBS) || (suit == CLUBS && trump == SPADES)
-        || (suit == HEARTS && trump == DIAMONDS) || (suit == DIAMONDS && trump == HEARTS)){
+        || (suit == HEARTS && trump == DIAMONDS) || 
+        (suit == DIAMONDS && trump == HEARTS)){
         return trump;
       }
     }
@@ -143,8 +145,10 @@ std::istream & operator>>(std::istream &is, Suit &suit) {
   //EFFECTS Returns true if card is the Jack of the next suit
   bool Card::is_left_bower(Suit trump) const{
     if(rank == JACK){
-      if((suit == SPADES && trump == CLUBS) || (suit == CLUBS && trump == SPADES)
-        || (suit == DIAMONDS && trump == HEARTS) || (suit == HEARTS && trump == DIAMONDS)){
+      if((suit == SPADES && trump == CLUBS) || 
+        (suit == CLUBS && trump == SPADES)
+        || (suit == DIAMONDS && trump == HEARTS) || 
+        (suit == HEARTS && trump == DIAMONDS)){
         return true;
       }
     }
@@ -174,7 +178,9 @@ std::istream& operator>>(std::istream &is, Card &c) {
 }
 //   operator<
 bool operator<(const Card &firstCard, const Card &secondCard) {
-  return !(firstCard >= secondCard);
+  if (firstCard.get_rank() != secondCard.get_rank())
+    return firstCard.get_rank() < secondCard.get_rank();
+  return firstCard.get_suit() < secondCard.get_suit();
 }
 //   operator<=
 bool operator<=(const Card &firstCard, const Card &secondCard) {
@@ -182,15 +188,16 @@ bool operator<=(const Card &firstCard, const Card &secondCard) {
 }
 //   operator>
 bool operator>(const Card &firstCard, const Card &secondCard) {
-  return firstCard.get_rank() > secondCard.get_rank();
+  return secondCard < firstCard;
 }
 //   operator>=
 bool operator>=(const Card &firstCard, const Card &secondCard) {
-  return firstCard.get_rank() >= secondCard.get_rank();
+  return !(firstCard < secondCard);
 }
 //   operator==
 bool operator==(const Card &firstCard, const Card &secondCard) {
-  return firstCard.get_rank() == secondCard.get_rank();
+  return firstCard.get_rank() == secondCard.get_rank() &&
+  firstCard.get_suit() == secondCard.get_suit();
 }
 //   operator!=
 bool operator!=(const Card &firstCard, const Card &secondCard) {
@@ -210,33 +217,47 @@ Suit Suit_next(Suit suit){
 
 //EFFECTS Returns true if a is lower value than b.  Uses trump to determine
 // order, as described in the spec.
-bool Card_less(const Card &a, const Card &b, Suit trump){
+bool Card_less(const Card &a, const Card &b, Suit trump) {
+
+  // Right bower highest
   if (a.is_right_bower(trump)) return false;
   if (b.is_right_bower(trump)) return true;
 
+  // Left bower second highest
   if (a.is_left_bower(trump)) return false;
   if (b.is_left_bower(trump)) return true;
 
-  if(a.is_trump(trump) && !b.is_trump(trump)) return false;
-  
-  if(!a.is_trump(trump) && b.is_trump(trump)) return true;
+  // Trump beats non-trump
+  if (a.is_trump(trump) && !b.is_trump(trump)) return false;
+  if (!a.is_trump(trump) && b.is_trump(trump)) return true;
 
+  // Otherwise compare rank normally
   return a.get_rank() < b.get_rank();
-
 }
-
 //EFFECTS Returns true if a is lower value than b.  Uses both the trump suit
 //  and the suit led to determine order, as described in the spec.
-bool Card_less(const Card &a, const Card &b, const Card &led_card, Suit trump){
-  if(a.is_trump(trump) && !b.is_trump(trump)){
-    if(a.is_trump(trump) && b.is_trump(trump)){
-      return a.get_rank() > b.get_rank();
-    }
-    return true;
-  }else if(a.get_rank() > b.get_rank()){
-    return true;
-  }
-  return false;
-}
+bool Card_less(const Card &a, const Card &b,
+               const Card &led_card, Suit trump) {
 
-// last function doesnt use suit lead
+  //  compare as trump cards
+  if (a.is_trump(trump) || b.is_trump(trump)) {
+    return Card_less(a, b, trump);
+  }
+
+  Suit led_suit = led_card.get_suit(trump);
+
+  bool a_follows = (a.get_suit(trump) == led_suit);
+  bool b_follows = (b.get_suit(trump) == led_suit);
+
+  // If one follows suit and other doesn't
+  if (a_follows && !b_follows) return false;
+  if (!a_follows && b_follows) return true;
+
+  // If both follow suit
+  if (a_follows && b_follows) {
+    return a.get_rank() < b.get_rank();
+  }
+
+  // Neither follows suit
+  return a.get_rank() < b.get_rank();
+}
